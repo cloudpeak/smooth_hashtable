@@ -2,6 +2,8 @@
 #include "smooth/hashmap.h"
 #include <iostream>
 
+using namespace smooth;
+
 TEST(HashMapTest, Emplace) {
     hashmap<int, std::string> map;
 

@@ -2,6 +2,8 @@
 #include "smooth/fixed_hashmap.h"
 #include <iostream>
 
+using namespace smooth;
+
 TEST(FixedHashMapTest, Emplace) {
   fixed_hashmap<int, std::string> map;
 

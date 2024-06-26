@@ -47,5 +47,20 @@ target_link_libraries(tree_list_unittests
         pthread
 )
 
+## fixed_hashmap_unittests
+add_executable(example
+        src/example/example.cc)
+
+target_include_directories(example PRIVATE
+        .
+)
+
+target_link_libraries(example
+        gtest
+        pthread
+)
+
+
+
 
 

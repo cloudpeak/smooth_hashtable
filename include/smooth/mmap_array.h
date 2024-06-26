@@ -1,11 +1,23 @@
-#ifndef HASHMAP_MMAP_ARRAY_H
-#define HASHMAP_MMAP_ARRAY_H
+// Copyright (c) 2024 Tin Project. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#pragma once
 
 #include <stdexcept>
 #include <cstring>
 
 #ifdef _WIN32
 #include <windows.h>
+#else // Linux
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
+namespace smooth {
+
+#ifdef _WIN32
 
 // Platform-specific functions for Windows
 void* platform_mmap(void* addr, size_t len, int fd, off_t offset) {
@@ -28,10 +40,6 @@ int platform_munmap(void* addr, size_t len) {
 }
 
 #else // Linux
-
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 #ifndef MAP_ANONYMOUS
 # define MAP_ANONYMOUS MAP_ANON
@@ -156,5 +164,4 @@ private:
     size_t size_;
 };
 
-
-#endif //HASHMAP_MMAP_ARRAY_H
+}

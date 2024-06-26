@@ -5,6 +5,8 @@
 #include <iostream>
 #include <algorithm>
 
+using namespace smooth;
+
 template <typename T>
 class TreeListTest : public ::testing::Test {};
 

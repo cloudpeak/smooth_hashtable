@@ -1,10 +1,15 @@
+// Copyright (c) 2024 Tin Project. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #pragma once
 
-#include <iostream>
 #include <functional>
-#include <chrono>
 #include <initializer_list>
+#include <cassert>
 #include "fixed_hashmap.h"
+
+namespace smooth {
 
 const static bool k_iter_end = true;
 const static bool k_iter_valid = false;
@@ -293,7 +298,7 @@ public:
         return at(key);
     }
 
-    const Mapped& operator[](Key&& key) const {
+    const Mapped& operator[](const Key& key) const {
         return at(key);
     }
 
@@ -484,3 +489,5 @@ private:
     fixed_hashmap<Key, Mapped, Hash> old_;     // Old container
     bool rehashing_;
 };
+
+}; // namespace smooth

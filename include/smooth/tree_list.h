@@ -1,48 +1,62 @@
+// Copyright (c) 2024 Tin Project. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#pragma once
+
 #include <cstdint>
 #include <memory>
 #include <cmath>
 #include <cassert>
 
-template <typename T, typename compare = std::less<T>>
+namespace smooth {
+
+template<typename T, typename compare = std::less<T>>
 class tree_list_base {
 public:
     using value_type = T;
     using difference_type = std::ptrdiff_t;
-    using pointer = T*;
-    using reference = T&;
+    using pointer = T *;
+    using reference = T &;
 
-    enum node_color { k_red = 1, k_black };
+    enum node_color {
+        k_red = 1, k_black
+    };
+
     // Node structure for the red-black tree.
     class rb_node_type {
 
     public:
         // Constructor. Newly-created nodes are colored red.
-        explicit rb_node_type(const T& data)
+        explicit rb_node_type(const T &data)
                 : left_(nullptr),
                   right_(nullptr),
                   parent_(nullptr),
                   color_(k_red),
                   data_(data) {}
 
-        template <typename... Args>
-        explicit rb_node_type(Args&&... args)
+        template<typename... Args>
+        explicit rb_node_type(Args &&... args)
                 : left_(nullptr),
                   right_(nullptr),
                   parent_(nullptr),
                   color_(k_red),
                   data_(std::forward<Args>(args)...) {}
 
-        rb_node_type(const rb_node_type&) = delete;
-        rb_node_type& operator=(const rb_node_type&) = delete;
+        rb_node_type(const rb_node_type &) = delete;
+
+        rb_node_type &operator=(const rb_node_type &) = delete;
 
         virtual ~rb_node_type() = default;
 
         node_color get_color() const { return color_; }
+
         void set_color(node_color color) { color_ = color; }
 
         // Fetches the user data.
-        T& data() { return data_; }
-        T const& data() const { return data_; }
+        T &data() { return data_; }
+
+        T const &data() const { return data_; }
 
         // Copies all user-level fields from the source rb_node_type, but not
         // internal fields. For example, the base implementation of this
@@ -50,26 +64,32 @@ public:
         // fields. Any augmentation information also does not need to be
         // copied, as it will be recomputed. Subclasses must call the
         // superclass implementation.
-        virtual void copy_from(rb_node_type* src) { data_ = src->data(); }
+        virtual void copy_from(rb_node_type *src) { data_ = src->data(); }
 
-        rb_node_type* left() { return left_; }
-        rb_node_type const* left() const { return left_; }
-        void set_left(rb_node_type* node) { left_ = node; }
+        rb_node_type *left() { return left_; }
 
-        rb_node_type const* right() const { return right_; }
-        rb_node_type* right() { return right_; }
-        void set_right(rb_node_type* node) { right_ = node; }
+        rb_node_type const *left() const { return left_; }
 
-        rb_node_type const* parent() const { return parent_; }
-        rb_node_type* parent() { return parent_; }
-        void set_parent(rb_node_type* node) { parent_ = node; }
+        void set_left(rb_node_type *node) { left_ = node; }
+
+        rb_node_type const *right() const { return right_; }
+
+        rb_node_type *right() { return right_; }
+
+        void set_right(rb_node_type *node) { right_ = node; }
+
+        rb_node_type const *parent() const { return parent_; }
+
+        rb_node_type *parent() { return parent_; }
+
+        void set_parent(rb_node_type *node) { parent_ = node; }
 
         bool is_left_child() const { return parent_ && parent_->left_ == this; }
 
     private:
-        rb_node_type* left_;
-        rb_node_type* right_;
-        rb_node_type* parent_;
+        rb_node_type *left_;
+        rb_node_type *right_;
+        rb_node_type *parent_;
         node_color color_;
         T data_;
     };
@@ -82,33 +102,41 @@ public:
     // Node structure for the linked list.
     struct list_node_type {
         T data;
-        list_node_type* next;
+        list_node_type *next;
 
-        explicit list_node_type(const T& data) : data(data), next(nullptr) {}
-        explicit list_node_type(T&& data) : data(std::move(data)), next(nullptr) {}
-        template <typename... Args>
-        list_node_type(Args&&... args) : data(std::forward<Args>(args)...), next(nullptr) {}
+        explicit list_node_type(const T &data) : data(data), next(nullptr) {}
+
+        explicit list_node_type(T &&data) : data(std::move(data)), next(nullptr) {}
+
+        template<typename... Args>
+        list_node_type(Args &&... args) : data(std::forward<Args>(args)...), next(nullptr) {}
     };
 
     // Mixed node structure
     struct mixed_node_type {
         mixed_node_type() = default;
+
         data_struct_type ds_type_;
         union {
-            list_node_type* list_node_;
-            rb_node_type* tree_node_;
+            list_node_type *list_node_;
+            rb_node_type *tree_node_;
         };
 
-        explicit mixed_node_type(list_node_type* node) : list_node_(node), ds_type_(data_struct_type::k_linked_list) {}
-        explicit mixed_node_type(rb_node_type* node) : tree_node_(node), ds_type_(data_struct_type::k_red_black_tree) {}
-        explicit mixed_node_type(list_node_type* node, rb_node_type*, data_struct_type type) : list_node_(node), ds_type_(type) {}
+        explicit mixed_node_type(list_node_type *node) : list_node_(node),
+                                                         ds_type_(data_struct_type::k_linked_list) {}
+
+        explicit mixed_node_type(rb_node_type *node) : tree_node_(node),
+                                                       ds_type_(data_struct_type::k_red_black_tree) {}
+
+        explicit mixed_node_type(list_node_type *node, rb_node_type *, data_struct_type type) : list_node_(node),
+                                                                                                ds_type_(type) {}
 
 
-        bool operator!=(const mixed_node_type& other) const {
+        bool operator!=(const mixed_node_type &other) const {
             return tree_node_ != other.tree_node_;
         }
 
-        bool operator==(const mixed_node_type& other) const {
+        bool operator==(const mixed_node_type &other) const {
             return tree_node_ == other.tree_node_;
         }
 
@@ -122,28 +150,29 @@ public:
 
 
     // Define a base class for iterators
-    template <typename ValueType>
+    template<typename ValueType>
     class iterator_base {
     public:
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = ValueType;
         using difference_type = std::ptrdiff_t;
-        using pointer = ValueType*;
-        using reference = ValueType&;
+        using pointer = ValueType *;
+        using reference = ValueType &;
 
         // Constructor
         explicit iterator_base(mixed_node_type node) : node_(node) {}
-        explicit iterator_base( struct list_node_type* ptr)
+
+        explicit iterator_base(struct list_node_type *ptr)
                 : node_{ptr} {}
 
         // Dereference operator
-        ValueType& operator*() const { return get_data(); }
+        ValueType &operator*() const { return get_data(); }
 
         // Arrow operator
-        ValueType* operator->() const { return &get_data(); }
+        ValueType *operator->() const { return &get_data(); }
 
         // Pre-increment operator
-        iterator_base& operator++() {
+        iterator_base &operator++() {
             increment();
             return *this;
         }
@@ -156,21 +185,21 @@ public:
         }
 
         // Equality operator
-        bool operator==(const iterator_base& other) const {
+        bool operator==(const iterator_base &other) const {
             return node_ == other.node_;
         }
 
         // Inequality operator
-        bool operator!=(const iterator_base& other) const {
+        bool operator!=(const iterator_base &other) const {
             return node_ != other.node_;
         }
 
     protected:
-        ValueType& get_data() const {
+        ValueType &get_data() const {
             if (node_.ds_type_ == data_struct_type::k_linked_list) {
                 return node_.list_node_->data;
             }
-            return  node_.tree_node_->data();
+            return node_.tree_node_->data();
         }
 
         void increment() {
@@ -211,18 +240,23 @@ public:
 
     public:
         using Base::Base;  // Inherit constructors
-        explicit const_iterator(const iterator& it) : Base(it.node_) {}
+        explicit const_iterator(const iterator &it) : Base(it.node_) {}
+
         friend class tree_list_base<T>;  // Grant access from tree_list
     };
 
 
-
     tree_list_base() = default;
+
     ~tree_list_base() = default;
-    tree_list_base(const tree_list_base&) = default;
-    tree_list_base& operator=(const tree_list_base&) = default;
-    tree_list_base(tree_list_base&&) = default;
-    tree_list_base& operator=(tree_list_base&&) = default;
+
+    tree_list_base(const tree_list_base &) = default;
+
+    tree_list_base &operator=(const tree_list_base &) = default;
+
+    tree_list_base(tree_list_base &&) = default;
+
+    tree_list_base &operator=(tree_list_base &&) = default;
 
 
     void clear() {
@@ -240,19 +274,19 @@ public:
         return size_ == 0;
     }
 
-    template <typename P>
-    iterator insert(P&& data) {
+    template<typename P>
+    iterator insert(P &&data) {
         treefy_or_un_treefy();
         if (ds_type_ == data_struct_type::k_linked_list) {
-            const auto list_node  = list_insert(std::forward<decltype(data)>(data));
+            const auto list_node = list_insert(std::forward<decltype(data)>(data));
             return iterator(list_node);
         }
         auto rb_node = tree_insert(std::forward<decltype(data)>(data));
         return iterator(mixed_node_type(rb_node));
     }
 
-    template <typename... Args>
-    iterator emplace(Args&&... args) {
+    template<typename... Args>
+    iterator emplace(Args &&... args) {
         treefy_or_un_treefy();
         if (ds_type_ == data_struct_type::k_linked_list) {
             auto list_node = list_emplace(std::forward<Args>(args)...);
@@ -262,7 +296,7 @@ public:
         return iterator(mix_node);
     }
 
-    iterator insert(iterator pos, const T& data) {
+    iterator insert(iterator pos, const T &data) {
         treefy_or_un_treefy();
         if (ds_type_ == data_struct_type::k_linked_list) {
             auto list_node = list_insert(data);
@@ -273,7 +307,7 @@ public:
     }
 
     // Search for a node with the given data.
-    iterator find(const T& data) const {
+    iterator find(const T &data) const {
         if (ds_type_ == data_struct_type::k_linked_list) {
             return iterator(list_search(data));
         }
@@ -282,8 +316,8 @@ public:
         return iterator(node);
     }
 
-    bool tree_erase(const T& data) {
-        rb_node_type* node = tree_search(data);
+    bool tree_erase(const T &data) {
+        rb_node_type *node = tree_search(data);
         if (node) {
             delete_node(node);
             return true;
@@ -291,14 +325,14 @@ public:
         return false;
     }
 
-    void swap(tree_list_base& other) {
+    void swap(tree_list_base &other) {
         std::swap(size_, other.size_);
         std::swap(ds_type_, other.ds_type_);
         std::swap(root_, other.root_);
     }
 
     // Erase a node with the given data.
-    void erase(const T& data) {
+    void erase(const T &data) {
         if (ds_type_ == data_struct_type::k_linked_list) {
             list_erase(data);
         }
@@ -319,7 +353,7 @@ public:
                 head_ = to_delete->next;
                 it = iterator(head_);
             } else {
-                list_node_type* prev_node = head_;
+                list_node_type *prev_node = head_;
                 while (prev_node->next != to_delete.get()) {
                     prev_node = prev_node->next;
                 }
@@ -336,7 +370,7 @@ public:
     // Get iterator to the beginning
     iterator begin() noexcept {
         if (ds_type_ == data_struct_type::k_red_black_tree) {
-            rb_node_type* rb_node = root_;
+            rb_node_type *rb_node = root_;
             while (rb_node->left() != nullptr) {
                 rb_node = rb_node->left();
             }
@@ -355,7 +389,7 @@ public:
             return const_iterator(head_);
         }
 
-        rb_node_type* rb_node = root_;
+        rb_node_type *rb_node = root_;
         while (rb_node->left() != nullptr) {
             rb_node = rb_node->left();
         }
@@ -372,7 +406,7 @@ public:
             return const_iterator(head_);
         }
 
-        rb_node_type* rb_node = root_;
+        rb_node_type *rb_node = root_;
         while (rb_node->left() != nullptr) {
             rb_node = rb_node->left();
         }
@@ -386,57 +420,51 @@ public:
 
 protected:
     // Private helper functions for list operations
-    bool update_node(rb_node_type*) { return false; }
+    bool update_node(rb_node_type *) { return false; }
 
-    list_node_type* un_treefy() {
-        if(size_ <=3) {
-            return do_un_treefy();
-        }
-        return nullptr;
-    }
-
-    void do_un_treefy() {
+    void un_treefy() {
         traversal_un_treefy(root_);
     }
 
-    void traversal_un_treefy(rb_node_type* node) {
-        if(node->left() != nullptr) {
+    void traversal_un_treefy(rb_node_type *node) {
+        if (node->left() != nullptr) {
             traversal_un_treefy(node->left());
         }
-        if(node->right() != nullptr) {
+        if (node->right() != nullptr) {
             traversal_un_treefy(node->right());
         }
 
         list_insert(std::move(node->data()));
         delete node;
     }
+
     void treefy_or_un_treefy() {
         if (ds_type_ == data_struct_type::k_linked_list) {
             if (size_ >= 10) {
-                do_treefy();
+                treefy();
             }
         } else {
             if (size_ <= 3) {
-                do_un_treefy();
+                un_treefy();
             }
         }
     }
 
-    rb_node_type* do_treefy() {
-      list_node_type* node = head_;
-      root_ = nullptr;
-      rb_node_type* rb_node = nullptr;
-      while (node != nullptr) {
-        auto tree_node = new rb_node_type(node->data);
-        tree_insert_node(tree_node);
-        node = node->next;
-      }
-      ds_type_ = data_struct_type::k_red_black_tree;
-      return rb_node;
+    rb_node_type *treefy() {
+        list_node_type *node = head_;
+        root_ = nullptr;
+        rb_node_type *rb_node = nullptr;
+        while (node != nullptr) {
+            auto tree_node = new rb_node_type(node->data);
+            tree_insert_node(tree_node);
+            node = node->next;
+        }
+        ds_type_ = data_struct_type::k_red_black_tree;
+        return rb_node;
     }
 
-    list_node_type* list_search(const T& data) const {
-        list_node_type* node = head_;
+    list_node_type *list_search(const T &data) const {
+        list_node_type *node = head_;
         while (node != nullptr) {
             if (node->data == data) {
                 return node;
@@ -446,27 +474,27 @@ protected:
         return nullptr;
     }
 
-    template <typename P>
-    list_node_type* list_insert(P&& data) {
-        auto old  = head_;
+    template<typename P>
+    list_node_type *list_insert(P &&data) {
+        auto old = head_;
         head_ = new list_node_type(std::forward<decltype(data)>(data));
         head_->next = old;
         ++size_;
         return head_;
     }
 
-    template <typename... Args>
-    list_node_type* list_emplace(Args&&... args) {
-        auto old  = head_;
+    template<typename... Args>
+    list_node_type *list_emplace(Args &&... args) {
+        auto old = head_;
         head_ = new list_node_type(std::forward<decltype(args)>(args)...);
         head_->next = old;
         ++size_;
         return head_;
     }
 
-    void list_erase(const T& data) {
-        list_node_type* prev_node = nullptr;
-        list_node_type* current_node = head_;
+    void list_erase(const T &data) {
+        list_node_type *prev_node = nullptr;
+        list_node_type *current_node = head_;
         std::unique_ptr<list_node_type> to_delete;
         while (current_node != nullptr) {
             if (current_node->data == data) {
@@ -485,31 +513,31 @@ protected:
     }
 
     // Private helper functions for tree operations
-    template <typename P>
-    rb_node_type* tree_insert(P&& data) {
-        auto* new_node = new rb_node_type(std::forward<decltype(data)>(data));
+    template<typename P>
+    rb_node_type *tree_insert(P &&data) {
+        auto *new_node = new rb_node_type(std::forward<decltype(data)>(data));
         size_++;
         tree_insert_node(new_node);
         return new_node;
     }
 
-    template <typename... Args>
-    rb_node_type* tree_emplace(Args&&... args) {
-        auto* new_node = new rb_node_type(std::forward<decltype(args)>(args)...);
+    template<typename... Args>
+    rb_node_type *tree_emplace(Args &&... args) {
+        auto *new_node = new rb_node_type(std::forward<decltype(args)>(args)...);
         tree_insert_node(new_node);
         size_++;
         return new_node;
     }
 
 
-    static rb_node_type* walk_to_leftmost_minor(rb_node_type* node) {
+    static rb_node_type *walk_to_leftmost_minor(rb_node_type *node) {
         while (node->left() != nullptr) {
             node = node->left();
         }
         return node;
     };
 
-    static rb_node_type* walk_to_right_most_minor(rb_node_type* node) {
+    static rb_node_type *walk_to_right_most_minor(rb_node_type *node) {
         while (node->right() != nullptr) {
             node = node->right();
         }
@@ -517,11 +545,11 @@ protected:
     };
 
 
-    static rb_node_type* walk_to_next_node(rb_node_type* node) {
+    static rb_node_type *walk_to_next_node(rb_node_type *node) {
         if (node->right() != nullptr) {
             return walk_to_leftmost_minor(node->right());
         }
-        rb_node_type* parent = node->parent();
+        rb_node_type *parent = node->parent();
         while (parent != nullptr && node == parent->right()) { // node is right child
             node = parent;
             parent = parent->parent();
@@ -530,11 +558,11 @@ protected:
         return parent;
     }
 
-    static rb_node_type* walk_to_prev_node(rb_node_type* node)  {
+    static rb_node_type *walk_to_prev_node(rb_node_type *node) {
         if (node->left() != nullptr) {
             return walk_to_right_most_minor(node->left());
         }
-        rb_node_type* parent = node->parent();
+        rb_node_type *parent = node->parent();
         while (parent != nullptr && node == parent->left()) {  // node is left child
             node = parent;
             parent = parent->parent();
@@ -544,13 +572,13 @@ protected:
     }
 
     // Searches the tree for the given datum.
-    rb_node_type* tree_search(const T& data) const {
+    rb_node_type *tree_search(const T &data) const {
         return tree_search_normal(root_, data);
     }
 
     // Searches the tree using the normal comparison operations,
     // suitable for simple data types such as numbers.
-    rb_node_type* tree_search_normal(rb_node_type* current, const T& data) const {
+    rb_node_type *tree_search_normal(rb_node_type *current, const T &data) const {
         while (current) {
             if (current->data() == data)
                 return current;
@@ -563,13 +591,13 @@ protected:
     }
 
     void clear_list() {
-        if(ds_type_ != data_struct_type::k_linked_list || head_ == nullptr) {
+        if (ds_type_ != data_struct_type::k_linked_list || head_ == nullptr) {
             return;
         }
 
         auto current = head_;
-        while(current != nullptr) {
-            list_node_type* next = current->next;
+        while (current != nullptr) {
+            list_node_type *next = current->next;
             {
                 std::unique_ptr<list_node_type> to_delete(current);
             }
@@ -580,14 +608,14 @@ protected:
     }
 
     void clear_tree() {
-        if(ds_type_ != data_struct_type::k_red_black_tree || root_ == nullptr) {
+        if (ds_type_ != data_struct_type::k_red_black_tree || root_ == nullptr) {
             return;
         }
         tree_free(root_);
         root_ = nullptr;
     }
 
-    void tree_free(rb_node_type* node) {
+    void tree_free(rb_node_type *node) {
         if (!node)
             return;
         if (node->left())
@@ -600,9 +628,9 @@ protected:
     }
 
     // Fix the tree after an insertion to maintain red-black properties.
-    void tree_insert_node(rb_node_type* z) {
-        rb_node_type* y = nullptr;
-        rb_node_type* x = root_;
+    void tree_insert_node(rb_node_type *z) {
+        rb_node_type *y = nullptr;
+        rb_node_type *x = root_;
         while (x) {
             y = x;
             if (compare()(z->data(), x->data()))
@@ -623,10 +651,10 @@ protected:
 
     // Finds the rb_node_type following the given one in sequential ordering of
     // their data, or null if none exists.
-    rb_node_type* tree_successor(rb_node_type* x) {
+    rb_node_type *tree_successor(rb_node_type *x) {
         if (x->right())
             return tree_minimum(x->right());
-        rb_node_type* y = x->parent();
+        rb_node_type *y = x->parent();
         while (y && x == y->right()) {
             x = y;
             y = y->parent();
@@ -636,14 +664,14 @@ protected:
 
     // Finds the minimum element in the sub-tree rooted at the given
     // rb_node_type.
-    rb_node_type* tree_minimum(rb_node_type* x) {
+    rb_node_type *tree_minimum(rb_node_type *x) {
         while (x->left())
             x = x->left();
         return x;
     }
 
     // Helper for maintaining the augmented red-black tree.
-    void propagate_updates(rb_node_type* start) {
+    void propagate_updates(rb_node_type *start) {
         bool should_continue = true;
         while (start && should_continue) {
             should_continue = update_node(start);
@@ -657,9 +685,9 @@ protected:
 
     // Left-rotates the subtree rooted at x.
     // Returns the new root of the subtree (x's right child).
-    rb_node_type* left_rotate(rb_node_type* x) {
+    rb_node_type *left_rotate(rb_node_type *x) {
         // Set y.
-        rb_node_type* y = x->right();
+        rb_node_type *y = x->right();
 
         // Turn y's left subtree into x's right subtree.
         x->set_right(y->left());
@@ -689,9 +717,9 @@ protected:
 
     // Right-rotates the subtree rooted at y.
     // Returns the new root of the subtree (y's left child).
-    rb_node_type* right_rotate(rb_node_type* y) {
+    rb_node_type *right_rotate(rb_node_type *y) {
         // Set x.
-        rb_node_type* x = y->left();
+        rb_node_type *x = y->left();
 
         // Turn x's right subtree into y's left subtree.
         y->set_left(x->right());
@@ -720,18 +748,18 @@ protected:
     }
 
     // Inserts the given rb_node_type into the tree.
-    void insert_node(rb_node_type* x) {
+    void insert_node(rb_node_type *x) {
         tree_insert(x);
         x->set_color(k_red);
         update_node(x);
 
 
         // The rb_node_type from which to start propagating updates upwards.
-        rb_node_type* update_start = x->parent();
+        rb_node_type *update_start = x->parent();
 
         while (x != root_ && x->parent()->get_color() == k_red) {
             if (x->parent() == x->parent()->parent()->left()) {
-                rb_node_type* y = x->parent()->parent()->right();
+                rb_node_type *y = x->parent()->parent()->right();
                 if (y && y->get_color() == k_red) {
                     // Case 1
                     x->parent()->set_color(k_black);
@@ -750,12 +778,12 @@ protected:
                     // Case 3
                     x->parent()->set_color(k_black);
                     x->parent()->parent()->set_color(k_red);
-                    rb_node_type* new_sub_tree_root = right_rotate(x->parent()->parent());
+                    rb_node_type *new_sub_tree_root = right_rotate(x->parent()->parent());
                     update_start = new_sub_tree_root->parent();
                 }
             } else {
                 // Same as "then" clause with "right" and "left" exchanged.
-                rb_node_type* y = x->parent()->parent()->left();
+                rb_node_type *y = x->parent()->parent()->left();
                 if (y && y->get_color() == k_red) {
                     // Case 1
                     x->parent()->set_color(k_black);
@@ -774,7 +802,7 @@ protected:
                     // Case 3
                     x->parent()->set_color(k_black);
                     x->parent()->parent()->set_color(k_red);
-                    rb_node_type* new_sub_tree_root = left_rotate(x->parent()->parent());
+                    rb_node_type *new_sub_tree_root = left_rotate(x->parent()->parent());
                     update_start = new_sub_tree_root->parent();
                 }
             }
@@ -788,14 +816,14 @@ protected:
     // Restores the red-black property to the tree after splicing out
     // a rb_node_type. Note that x may be null, which is why xParent must be
     // supplied.
-    void delete_fixup(rb_node_type* x, rb_node_type* x_parent) {
+    void delete_fixup(rb_node_type *x, rb_node_type *x_parent) {
         while (x != root_ && (!x || x->get_color() == k_black)) {
             if (x == x_parent->left()) {
                 // Note: the text points out that w can not be null.
                 // The reason is not obvious from simply looking at
                 // the code; it comes about from the properties of the
                 // red-black tree.
-                rb_node_type* w = x_parent->right();
+                rb_node_type *w = x_parent->right();
                 if (w->get_color() == k_red) {
                     // Case 1
                     w->set_color(k_black);
@@ -834,7 +862,7 @@ protected:
                 // The reason is not obvious from simply looking at
                 // the code; it comes about from the properties of the
                 // red-black tree.
-                rb_node_type* w = x_parent->left();
+                rb_node_type *w = x_parent->left();
                 if (w->get_color() == k_red) {
                     // Case 1
                     w->set_color(k_black);
@@ -875,16 +903,16 @@ protected:
     // particular rb_node_type may not actually be removed from the tree;
     // instead, another rb_node_type might be removed and its contents
     // copied into z.
-    void delete_node(rb_node_type* z) {
+    void delete_node(rb_node_type *z) {
         // Y is the rb_node_type to be unlinked from the tree.
-        rb_node_type* y;
+        rb_node_type *y;
         if (!z->left() || !z->right())
             y = z;
         else
             y = tree_successor(z);
 
         // Y is guaranteed to be non-null at this point.
-        rb_node_type* x;
+        rb_node_type *x;
         if (y->left())
             x = y->left();
         else
@@ -892,7 +920,7 @@ protected:
 
         // X is the child of y which might potentially replace y in
         // the tree. X might be null at this point.
-        rb_node_type* x_parent;
+        rb_node_type *x_parent;
         if (x) {
             x->set_parent(y->parent());
             x_parent = x->parent();
@@ -927,15 +955,15 @@ protected:
 
     // Root node of the tree
     union {
-        list_node_type* head_;
-        rb_node_type* root_ ; // NOLINT
+        list_node_type *head_;
+        rb_node_type *root_; // NOLINT
     };
     uint64_t size_;
     data_struct_type ds_type_;
 };
 
 
-template <typename T, typename compare = std::less<T>>
+template<typename T, typename compare = std::less<T>>
 class tree_list : public tree_list_base<T, compare> {
 public:
     // Constructor
@@ -949,21 +977,21 @@ public:
         this->clear();
     }
 
-    tree_list(const tree_list& rhs) {
-        for (auto& item : rhs) {
+    tree_list(const tree_list &rhs) {
+        for (auto &item: rhs) {
             insert(item);
         }
     }
 
-    tree_list& operator=(const tree_list& rhs) {
+    tree_list &operator=(const tree_list &rhs) {
         this->clear();
-        for (auto& item : rhs) {
+        for (auto &item: rhs) {
             insert(item);
         }
         return *this;
     }
 
-    tree_list(tree_list&& rhs){
+    tree_list(tree_list &&rhs) {
         this->size_ = rhs.size_;
         this->ds_type_ = rhs.ds_type_;
         this->root_ = rhs.root_;
@@ -971,7 +999,8 @@ public:
         rhs.ds_type_ = tree_list_base<T, compare>::data_struct_type::k_linked_list;
         rhs.root_ = nullptr;
     }
-    tree_list& operator=(tree_list&& rhs) {
+
+    tree_list &operator=(tree_list &&rhs) {
         this->clear();
         this->size_ = rhs.size_;
         this->ds_type_ = rhs.ds_type_;
@@ -981,28 +1010,36 @@ public:
         rhs.root_ = nullptr;
         return *this;
     }
-
 };
 
-template <typename T, typename compare = std::less<T>>
-class tree_list_trivial : public tree_list_base<T, compare>  {
+template<typename T, typename compare = std::less<T>>
+class tree_list_trivial : public tree_list_base<T, compare> {
 public:
     // Constructor
     tree_list_trivial() = default;
+
     ~tree_list_trivial() = default;
-    tree_list_trivial(const tree_list_trivial& rhs) = default;
-    tree_list_trivial& operator=(const tree_list_trivial& rhs) = default;
-    tree_list_trivial(tree_list_trivial&& rhs) = default;
-    tree_list_trivial& operator=(tree_list_trivial&& rhs) = default;
+
+    tree_list_trivial(const tree_list_trivial &rhs) = default;
+
+    tree_list_trivial &operator=(const tree_list_trivial &rhs) = default;
+
+    tree_list_trivial(tree_list_trivial &&rhs) = default;
+
+    tree_list_trivial &operator=(tree_list_trivial &&rhs) = default;
 };
 
-namespace std {
-    template <typename T>
-    void swap(tree_list_trivial<T>& lhs, tree_list_trivial<T>& rhs) {
-        lhs.swap(rhs);
-    }
-}
+
 
 static_assert(std::is_trivially_copyable<tree_list_base<int>>::value, "tree_list_base<int>> is not trivial copyable");
 static_assert(!std::is_trivially_copyable<tree_list<int>>::value, "tree_list<int> is trivial copyable");
 static_assert(std::is_trivially_copyable<tree_list_trivial<int>>::value, "tree_list_trivial<int>> is not trivial copyable");
+
+};
+
+namespace std {
+    template<typename T>
+    void swap(smooth::tree_list_trivial <T> &lhs, smooth::tree_list_trivial <T> &rhs) {
+        lhs.swap(rhs);
+    }
+}
