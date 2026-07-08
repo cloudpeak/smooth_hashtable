@@ -9,7 +9,6 @@
 #include <list>
 #include  <utility>
 #include "mmap_array.h"
-#include "mmap_array.h"
 #include "tree_list.h"
 
 namespace smooth {
@@ -19,6 +18,7 @@ const size_t k_max_steal_iterations = 300;
 template<typename IteratorType, typename ValueType, typename TableType, typename BucketType>
 class fixed_map_iterator_base {
 public:
+    using iterator_category = std::forward_iterator_tag;
     using value_type = ValueType;
     using difference_type = std::ptrdiff_t;
     using pointer = value_type *;
@@ -227,8 +227,11 @@ public:
         for (size_t i = 0; i < table_.size(); i++) {
             table_[i].clear();
         }
-        table_.clear();
+        // Keep the bucket array allocated so hash() never divides by zero
+        // after clear(). Matches std::unordered_map::clear semantics where
+        // bucket_count() is unchanged.
         size_ = 0;
+        stolen_bucket_ = static_cast<int64_t>(table_.size()) - 1;
     }
 
     // true in the bool field indicates new insertion, false indicates existing key for updating.
@@ -415,14 +418,21 @@ public:
                 return it->second;
             }
         }
-        auto it = bucket.emplace(key, Mapped());
-        size_++;
-        return it->second;
+        throw std::out_of_range("Key not found in hashmap::at");
     }
 
     // operator []
     Mapped &operator[](const Key &key) {
-        return at(key);
+        size_t index = hash(key);
+        auto &bucket = table_[index];
+        for (auto it = bucket.begin(); it != bucket.end(); ++it) {
+            if (it->first == key) {
+                return it->second;
+            }
+        }
+        auto it = bucket.emplace(key, Mapped());
+        size_++;
+        return it->second;
     }
 
     const Mapped &at(const Key &key) const {
@@ -433,11 +443,7 @@ public:
                 return it->second;
             }
         }
-        throw std::out_of_range("Key not found");
-    }
-
-    const Mapped &operator[](const Key &key) const {
-        return at(key);
+        throw std::out_of_range("Key not found in hashmap::at");
     }
 
     // Get the number of key-value pairs in the hashmap

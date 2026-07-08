@@ -153,7 +153,7 @@ public:
     template<typename ValueType>
     class iterator_base {
     public:
-        using iterator_category = std::bidirectional_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
         using value_type = ValueType;
         using difference_type = std::ptrdiff_t;
         using pointer = ValueType *;
@@ -207,14 +207,6 @@ public:
                 node_.list_node_ = node_.list_node_->next;
             } else {
                 node_.tree_node_ = walk_to_next_node(node_.tree_node_);
-            }
-        }
-
-        void decrement() {
-            if (node_.ds_type_ == data_struct_type::k_linked_list) {
-                node_.list_node_ = node_.list_node_->prev;
-            } else {
-                node_.tree_node_ = walk_to_prev_node(node_.tree_node_);
             }
         }
 
@@ -335,8 +327,9 @@ public:
     void erase(const T &data) {
         if (ds_type_ == data_struct_type::k_linked_list) {
             list_erase(data);
+        } else {
+            tree_erase(data);
         }
-        tree_erase(data);
     }
 
     // Erase an element at the given iterator
@@ -362,7 +355,20 @@ public:
             }
             --size_;
         } else {
-            delete_node(it.node_.tree_node_);
+            rb_node_type *z = it.node_.tree_node_;
+            // Determine whether z has two children: in that case delete_node
+            // copies successor data into z and frees the successor, so z stays
+            // valid and now holds the successor's data (i.e. the "next" element).
+            bool z_has_two_children = (z->left() != nullptr && z->right() != nullptr);
+            rb_node_type *next = tree_successor(z);
+            delete_node(z);
+            if (z_has_two_children) {
+                // z still alive with successor's data.
+                it.node_.tree_node_ = z;
+            } else {
+                // z freed; next (if any) is still valid.
+                it.node_.tree_node_ = next;
+            }
         }
         return it;
     }
@@ -423,10 +429,17 @@ protected:
     bool update_node(rb_node_type *) { return false; }
 
     void un_treefy() {
-        traversal_un_treefy(root_);
+        rb_node_type *tree_root = root_;
+        // Reset to empty linked list (head_ = nullptr via union).
+        root_ = nullptr;
+        traversal_un_treefy(tree_root);
+        ds_type_ = data_struct_type::k_linked_list;
     }
 
     void traversal_un_treefy(rb_node_type *node) {
+        if (node == nullptr) {
+            return;
+        }
         if (node->left() != nullptr) {
             traversal_un_treefy(node->left());
         }
@@ -434,7 +447,11 @@ protected:
             traversal_un_treefy(node->right());
         }
 
-        list_insert(std::move(node->data()));
+        // Insert at list head manually (do NOT use list_insert, which
+        // increments size_ — these elements are already counted in size_).
+        auto old = head_;
+        head_ = new list_node_type(std::move(node->data()));
+        head_->next = old;
         delete node;
     }
 
@@ -453,14 +470,15 @@ protected:
     rb_node_type *treefy() {
         list_node_type *node = head_;
         root_ = nullptr;
-        rb_node_type *rb_node = nullptr;
         while (node != nullptr) {
             auto tree_node = new rb_node_type(node->data);
-            tree_insert_node(tree_node);
-            node = node->next;
+            insert_node(tree_node);
+            list_node_type *next = node->next;
+            delete node;
+            node = next;
         }
         ds_type_ = data_struct_type::k_red_black_tree;
-        return rb_node;
+        return nullptr;
     }
 
     list_node_type *list_search(const T &data) const {
@@ -517,14 +535,14 @@ protected:
     rb_node_type *tree_insert(P &&data) {
         auto *new_node = new rb_node_type(std::forward<decltype(data)>(data));
         size_++;
-        tree_insert_node(new_node);
+        insert_node(new_node);
         return new_node;
     }
 
     template<typename... Args>
     rb_node_type *tree_emplace(Args &&... args) {
         auto *new_node = new rb_node_type(std::forward<decltype(args)>(args)...);
-        tree_insert_node(new_node);
+        insert_node(new_node);
         size_++;
         return new_node;
     }
@@ -749,10 +767,8 @@ protected:
 
     // Inserts the given rb_node_type into the tree.
     void insert_node(rb_node_type *x) {
-        tree_insert(x);
+        tree_insert_node(x);
         x->set_color(k_red);
-        update_node(x);
-
 
         // The rb_node_type from which to start propagating updates upwards.
         rb_node_type *update_start = x->parent();
@@ -955,11 +971,11 @@ protected:
 
     // Root node of the tree
     union {
-        list_node_type *head_;
+        list_node_type *head_ = nullptr;
         rb_node_type *root_; // NOLINT
     };
-    uint64_t size_;
-    data_struct_type ds_type_;
+    uint64_t size_ = 0;
+    data_struct_type ds_type_ = data_struct_type::k_linked_list;
 };
 
 

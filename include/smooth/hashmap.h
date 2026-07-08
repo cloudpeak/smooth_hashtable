@@ -23,8 +23,14 @@ const static int64_t k_num_items_to_steal = 1;
 template<typename IteratorType, typename ValueType, typename TableType>
 class hashmap_iterator_base {
 public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = ValueType;
+    using difference_type = std::ptrdiff_t;
+    using pointer = ValueType*;
+    using reference = ValueType&;
+
     hashmap_iterator_base(TableType* current, TableType* old, int which, IteratorType it, bool end)
-            : table_current_(current), table_old_(old), it_(it),  end_(end), which_(0) {}
+            : table_current_(current), table_old_(old), it_(it),  end_(end), which_(which) {}
 
     hashmap_iterator_base(TableType* current, TableType* old, bool end)
             : table_current_(current), table_old_(old), it_(current->end()),  end_(end), which_(0) {}
@@ -57,7 +63,7 @@ public:
             return false;
         }
 
-        return it_ != other.it_;
+        return it_ == other.it_;
     }
 
     bool operator!=(const hashmap_iterator_base& other) const {
@@ -137,7 +143,9 @@ public:
         using Base = hashmap_iterator_base<typename fixed_map_type::const_iterator, const value_type, const fixed_map_type>;
     public:
         using Base::Base; // Inherit constructors
-        explicit const_iterator(const iterator& it) : Base(it.table_current_, it.table_old_, it.end_) {}
+        explicit const_iterator(const iterator& it)
+            : Base(it.table_current_, it.table_old_, it.which_,
+                   typename fixed_map_type::const_iterator(it.it_), it.end_) {}
         friend class fixed_hashmap<Key, Mapped, Hash>;
     };
 
@@ -209,6 +217,11 @@ public:
 
     ~hashmap() {
     }
+
+    hashmap(const hashmap&) = delete;
+    hashmap& operator=(const hashmap&) = delete;
+    hashmap(hashmap&&) = default;
+    hashmap& operator=(hashmap&&) = default;
 
     std::pair<iterator, bool> insert(value_type && kv) {
         move_progressively();
@@ -295,11 +308,16 @@ public:
     }
 
     Mapped& operator[](const Key& key) {
-        return at(key);
-    }
-
-    const Mapped& operator[](const Key& key) const {
-        return at(key);
+        move_progressively();
+        maybe_rehash_guard guard(*this);
+        if (!rehashing_) {
+            return current_[key];
+        }
+        auto it_old = old_.find(key);
+        if (it_old != old_.end()) {
+            return it_old->second;
+        }
+        return current_[key];
     }
 
     // Remove a key-value pair from the hashmap
@@ -315,23 +333,10 @@ public:
         return std::max(num1, num2);
     }
 
-    template <typename P>
-    size_type erase(const Key& key) {
-        move_progressively();
-        maybe_rehash_guard guard(*this);
-        if(!rehashing_) {
-            return current_.erase(key);
-        }
-        size_type num1 = current_.erase(key);
-        size_type num2 = old_.erase(key);
-        maybe_rehash();
-        return std::max(num1, num2);
-    }
-
     iterator find(const Key& key) {
         if(!rehashing_) {
             auto it = current_.find(key);
-            new_iterator(0, it, it == current_.end());
+            return new_iterator(0, it, it == current_.end());
         }
         bool current_is_larger = current_.size() > old_.size();
         auto& larger = current_is_larger ? current_ : old_;
@@ -355,7 +360,7 @@ public:
     const_iterator find(const Key& key ) const {
         if(!rehashing_) {
             auto it = current_.find(key);
-            new_iterator(0, it, it == current_.end());
+            return new_iterator(0, it, it == current_.end());
         }
         bool current_is_larger = current_.size() > old_.size();
         const auto& larger = current_is_larger ? current_ : old_;

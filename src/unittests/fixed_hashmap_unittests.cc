@@ -109,7 +109,8 @@ TEST(FixedHashMapTest, At) {
 
   ASSERT_EQ(map.at(1), "one");
 
-  ASSERT_EQ(map.at(2), "");
+  // at() must throw std::out_of_range for missing keys (C++ standard)
+  ASSERT_THROW(map.at(2), std::out_of_range);
 }
 
 TEST(FixedHashMapTest, ConstAt) {

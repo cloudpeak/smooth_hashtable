@@ -4,8 +4,10 @@
 
 #pragma once
 
+#include <cassert>
 #include <stdexcept>
 #include <cstring>
+#include <new>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -47,7 +49,7 @@ int platform_munmap(void* addr, size_t len) {
 
 // Platform-specific functions for Linux
 void* platform_mmap(void* addr, size_t len,  int fd, off_t offset) {
-  return mmap(addr, len, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, fd, offset);
+  return mmap(addr, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, fd, offset);
 }
 
 int platform_munmap(void* addr, size_t len) {
@@ -68,16 +70,19 @@ public:
       // Allocate memory using appropriate method
       size_t size_in_bytes = size_ * sizeof(T);
       if (size_in_bytes < k_threshold_for_mmap) {
-        // Allocate using new if size is larger than 4k
+        // Allocate using new if size is smaller than 4k
         char* ptr = new char[size_in_bytes];
-        std::memset(ptr, 0, size_in_bytes);
         data_ = reinterpret_cast<T*>(ptr);
       } else {
-        // Allocate using platform_mmap if size is smaller than 4k
+        // Allocate using platform_mmap if size is larger than 4k
         data_ = static_cast<T*>(platform_mmap(nullptr, size_in_bytes, -1, 0));
         if (data_ == reinterpret_cast<void*>(-1)) {
           throw std::runtime_error("Error mapping memory");
         }
+      }
+      // Construct elements in-place via placement new (value-initialization).
+      for (size_t i = 0; i < size_; ++i) {
+        new (data_ + i) T();
       }
     }
 
@@ -87,6 +92,10 @@ public:
 
     void clear() {
       if (data_ != nullptr) {
+        // Explicitly destroy elements before releasing raw memory.
+        for (size_t i = 0; i < size_; ++i) {
+          data_[i].~T();
+        }
         size_t  size_in_bytes = size_ * sizeof(T);
         if (size_in_bytes < k_threshold_for_mmap) {
             char* ptr = reinterpret_cast<char*>(data_);
