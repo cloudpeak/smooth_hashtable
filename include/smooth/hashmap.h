@@ -279,7 +279,6 @@ public:
 
     Mapped& at(const Key& key) {
         move_progressively();
-        maybe_rehash_guard guard(*this);
         if(!rehashing_) {
             //fast path
             return current_.at(key);
@@ -320,16 +319,17 @@ public:
         return current_[key];
     }
 
-    // Remove a key-value pair from the hashmap
+    // Remove a key-value pair from the hashmap.
+    // Does not trigger shrink rehashing — that would cascade during bulk
+    // erase (each shrink moves items that are about to be erased anyway).
+    // Shrink is deferred to the next insert via maybe_rehash().
     size_type erase(const Key& key) {
         move_progressively();
-        maybe_rehash_guard guard(*this);
         if(!rehashing_) {
             return current_.erase(key);
         }
         size_t num1 = current_.erase(key);
         size_t num2 = old_.erase(key);
-        maybe_rehash();
         return std::max(num1, num2);
     }
 

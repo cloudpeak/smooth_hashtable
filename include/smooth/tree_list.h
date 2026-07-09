@@ -377,6 +377,7 @@ public:
     // Get iterator to the beginning
     iterator begin() noexcept {
         if (ds_type_ == data_struct_type::k_red_black_tree) {
+            if (!root_) return iterator(nullptr);
             rb_node_type *rb_node = root_;
             while (rb_node->left() != nullptr) {
                 rb_node = rb_node->left();
@@ -396,6 +397,7 @@ public:
             return const_iterator(head_);
         }
 
+        if (!root_) return const_iterator(nullptr);
         rb_node_type *rb_node = root_;
         while (rb_node->left() != nullptr) {
             rb_node = rb_node->left();
@@ -413,6 +415,7 @@ public:
             return const_iterator(head_);
         }
 
+        if (!root_) return const_iterator(nullptr);
         rb_node_type *rb_node = root_;
         while (rb_node->left() != nullptr) {
             rb_node = rb_node->left();

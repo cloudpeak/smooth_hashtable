@@ -60,7 +60,44 @@ target_link_libraries(example
         pthread
 )
 
+## redis_dict static library (C)
+add_library(redis_dict STATIC
+        redis_dict/dict.c
+        redis_dict/mt19937-64.c
+        redis_dict/siphash.c
+        redis_dict/zmalloc.c
+)
+target_include_directories(redis_dict PUBLIC redis_dict)
+set_target_properties(redis_dict PROPERTIES
+        C_STANDARD 11
+        C_STANDARD_REQUIRED ON
+)
+target_compile_options(redis_dict PRIVATE
+        -Wno-unused-function
+        -Wno-unused-parameter
+        -Wno-unused-variable
+)
 
+## Google Benchmark via FetchContent
+include(FetchContent)
+FetchContent_Declare(
+        googlebenchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG v1.8.3
+)
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googlebenchmark)
 
-
+## dict_benchmark
+add_executable(dict_benchmark
+        benchmarks/dict_benchmark.cc)
+target_include_directories(dict_benchmark PRIVATE
+        .
+        redis_dict
+)
+target_link_libraries(dict_benchmark
+        redis_dict
+        benchmark
+        pthread
+)
 
