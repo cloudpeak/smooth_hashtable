@@ -41,23 +41,15 @@ TYPED_TEST(TreeListTest, InsertMultipleAndSearch) {
 
 TYPED_TEST(TreeListTest, TreefyList) {
     tree_list<int> list;
-    list.insert(1);
-    list.insert(2);
-    list.insert(3);
-    list.insert(4);
-    list.insert(5);
-    list.insert(6);
-    list.insert(7);
-    list.insert(8);
-    list.insert(9);
-    list.insert(10);
-    list.insert(11);
+    for (int i = 1; i <= 33; ++i) {
+        list.insert(i);
+    }
 
     ASSERT_NE(list.find(1), list.end());
-    list.insert(12);
-    ASSERT_NE(list.find(12), list.end());
+    list.insert(34);
+    ASSERT_NE(list.find(34), list.end());
 
-    ASSERT_EQ(12u, list.size());
+    ASSERT_EQ(34u, list.size());
 }
 
 TYPED_TEST(TreeListTest, EraseElement) {
@@ -73,12 +65,12 @@ TYPED_TEST(TreeListTest, EraseElement) {
 
 TYPED_TEST(TreeListTest, EraseElementFromTree) {
     tree_list<int> list;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
 
     list.erase(5);
-    ASSERT_EQ(11u, list.size());
+    ASSERT_EQ(33u, list.size());
     ASSERT_EQ(list.find(5), list.end());
 }
 
@@ -98,12 +90,12 @@ TYPED_TEST(TreeListTest, IterateOverList) {
 
 TYPED_TEST(TreeListTest, IterateOverTree) {
     tree_list<int> list;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
 
     std::vector<int> expected;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         expected.push_back(i);
     }
     auto it = list.begin();
@@ -133,7 +125,7 @@ TYPED_TEST(TreeListTest, EraseIterator) {
 
 TYPED_TEST(TreeListTest, EraseIteratorFromTree) {
     tree_list<int> list;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
 
@@ -143,9 +135,12 @@ TYPED_TEST(TreeListTest, EraseIteratorFromTree) {
     }
 
     it = list.erase(it);
-    ASSERT_EQ(11u, list.size());
+    ASSERT_EQ(33u, list.size());
 
-    std::set<int> expected{0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11};
+    std::set<int> expected;
+    for (int i = 0; i < 34; ++i) {
+        if (i != 5) expected.insert(i);
+    }
     it = list.begin();
     for (size_t i = 0; it != list.end(); ++it, ++i) {
         ASSERT_EQ(*it, *expected.find(*it));
@@ -172,15 +167,15 @@ TYPED_TEST(TreeListTest, EraseAtEnd) {
 
 TYPED_TEST(TreeListTest, EraseAtEndTree) {
     tree_list<int> list;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
 
     auto it = list.end(); // Point to the end
     it = list.erase(it); // Erase at the end, should be a no-op
-    ASSERT_EQ(12u, list.size());
+    ASSERT_EQ(34u, list.size());
     std::vector<int> expected;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         expected.push_back(i);
     }
     it = list.begin();
@@ -203,7 +198,7 @@ TYPED_TEST(TreeListTest, Clear) {
 
 TYPED_TEST(TreeListTest, ClearTree) {
     tree_list<int> list;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
 
@@ -229,11 +224,11 @@ TYPED_TEST(TreeListTest, IterateOverConstList) {
 
 TYPED_TEST(TreeListTest, IterateOverConstTree) {
     tree_list<int> list;
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
     std::vector<int> expected;
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 34; ++i) {
         expected.push_back(i);
     }
     const auto& const_list = list;
@@ -305,7 +300,7 @@ TYPED_TEST(TreeListTest, TestCopy) {
 
 TYPED_TEST(TreeListTest, TestEraseIteratorFromTree) {
     tree_list<int> list;
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 34; ++i) {
         list.insert(i);
     }
 
@@ -315,10 +310,10 @@ TYPED_TEST(TreeListTest, TestEraseIteratorFromTree) {
     }
 
     it = list.erase(it);
-    ASSERT_EQ(14u, list.size());
+    ASSERT_EQ(33u, list.size());
 
     std::vector<int> expected;
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 34; ++i) {
         if (i != 5) {
             expected.push_back(i);
         }

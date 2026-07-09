@@ -17,7 +17,7 @@ const static bool k_iter_valid = false;
 const static bool k_item_found = true;
 const static bool k_item_not_found = false;
 
-const static int64_t k_num_items_to_steal = 1;
+const static int64_t k_num_items_to_steal = 64;
 
 // Iterator base class
 template<typename IteratorType, typename ValueType, typename TableType>

@@ -15,6 +15,18 @@ namespace smooth {
 
 const size_t k_max_steal_iterations = 300;
 
+inline size_t round_up_to_power_of_2(size_t n) {
+    if (n <= 1) return 1;
+    --n;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    return n + 1;
+}
+
 template<typename IteratorType, typename ValueType, typename TableType, typename BucketType>
 class fixed_map_iterator_base {
 public:
@@ -187,23 +199,27 @@ public:
         std::swap(size_, other.size_);
         std::swap(stolen_bucket_, other.stolen_bucket_);
         std::swap(hash_function_, other.hash_function_);
+        std::swap(mask_, other.mask_);
     }
 
     // Constructor
     explicit fixed_hashmap(int initial_size = 10, const Hash &hash = Hash())
-            : table_(initial_size),
-              stolen_bucket_(initial_size - 1),
+            : table_(round_up_to_power_of_2(initial_size)),
+              stolen_bucket_(static_cast<int64_t>(table_.size()) - 1),
               size_(0),
-              hash_function_(hash) {
+              hash_function_(hash),
+              mask_(table_.size() - 1) {
     }
 
     fixed_hashmap(fixed_hashmap &&other) noexcept
             : table_(std::move(other.table_)),
               stolen_bucket_(table_.size() - 1),
               size_(other.size_),
-              hash_function_(std::move(other.hash_function_)) {
+              hash_function_(std::move(other.hash_function_)),
+              mask_(table_.size() - 1) {
         other.size_ = 0;
         other.stolen_bucket_ = 0;
+        other.mask_ = 0;
     }
 
     // Move assignment operator
@@ -213,8 +229,10 @@ public:
             size_ = other.size_;
             stolen_bucket_ = other.stolen_bucket_;
             hash_function_ = std::move(other.hash_function_);
+            mask_ = other.mask_;
             other.size_ = 0;
             other.stolen_bucket_ = 0;
+            other.mask_ = 0;
         }
         return *this;
     }
@@ -341,6 +359,7 @@ public:
 
     std::vector<std::pair<Key, Mapped>> steal_elements(int64_t num_to_steal) {
         std::vector<std::pair<Key, Mapped>> stolen_elements;
+        stolen_elements.reserve(num_to_steal);
         size_t start_bucket = stolen_bucket_;
         while (num_to_steal > 0 && stolen_bucket_ >= 0) {
             if (start_bucket - stolen_bucket_ > k_max_steal_iterations) {
@@ -349,9 +368,6 @@ public:
 
             auto &bucket = table_[stolen_bucket_];
             while (num_to_steal > 0 && !bucket.empty()) {
-                if (stolen_elements.empty()) {
-                    stolen_elements.reserve(num_to_steal);
-                }
                 auto it = bucket.begin();
                 stolen_elements.emplace_back(std::move(*it));
                 bucket.erase(it);
@@ -457,15 +473,16 @@ private:
     size_t size_;
     Hash hash_function_;  // Hash
     int64_t stolen_bucket_;
+    size_t mask_;  // table_.size() - 1, for fast bitmask hash
 
     // Hash function
     size_t hash(const Key &key) const {
-        return hash_function_(key) % table_.size();
+        return hash_function_(key) & mask_;
     }
 
     template<typename P>
     size_t hash(const P &key) const {
-        return hash_function_(key) % table_.size();
+        return hash_function_(key) & mask_;
     }
 };
 };  // namespace smooth

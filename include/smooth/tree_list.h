@@ -8,6 +8,7 @@
 #include <memory>
 #include <cmath>
 #include <cassert>
+#include <vector>
 
 namespace smooth {
 
@@ -47,7 +48,7 @@ public:
 
         rb_node_type &operator=(const rb_node_type &) = delete;
 
-        virtual ~rb_node_type() = default;
+        ~rb_node_type() = default;
 
         node_color get_color() const { return color_; }
 
@@ -64,7 +65,7 @@ public:
         // fields. Any augmentation information also does not need to be
         // copied, as it will be recomputed. Subclasses must call the
         // superclass implementation.
-        virtual void copy_from(rb_node_type *src) { data_ = src->data(); }
+        void copy_from(rb_node_type *src) { data_ = src->data(); }
 
         rb_node_type *left() { return left_; }
 
@@ -457,11 +458,11 @@ protected:
 
     void treefy_or_un_treefy() {
         if (ds_type_ == data_struct_type::k_linked_list) {
-            if (size_ >= 10) {
+            if (size_ >= 32) {
                 treefy();
             }
         } else {
-            if (size_ <= 3) {
+            if (size_ <= 8) {
                 un_treefy();
             }
         }
@@ -636,13 +637,18 @@ protected:
     void tree_free(rb_node_type *node) {
         if (!node)
             return;
-        if (node->left())
-            tree_free(node->left());
-        if (node->right())
-            tree_free(node->right());
-
-        std::unique_ptr<rb_node_type> to_delete(node);
-        --size_;
+        std::vector<rb_node_type *> stack;
+        stack.push_back(node);
+        while (!stack.empty()) {
+            rb_node_type *cur = stack.back();
+            stack.pop_back();
+            if (cur->left())
+                stack.push_back(cur->left());
+            if (cur->right())
+                stack.push_back(cur->right());
+            delete cur;
+            --size_;
+        }
     }
 
     // Fix the tree after an insertion to maintain red-black properties.

@@ -221,7 +221,8 @@ TEST(FixedHashMapTest, StealElements) {
 TEST(FixedHashMapTest, GetBucketCount) {
   fixed_hashmap<int, std::string> map(10);
 
-  ASSERT_EQ(map.get_bucket_count(), 10);
+  // Bucket count is rounded up to next power of 2 for fast bitmask hashing
+  ASSERT_EQ(map.get_bucket_count(), 16);
 }
 
 TEST(FixedHashMapTest, MoveConstructor) {
