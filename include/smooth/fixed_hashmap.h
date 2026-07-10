@@ -390,6 +390,44 @@ public:
         return stolen_elements;
     }
 
+    // Migrate up to `num_to_migrate` elements from this table into `dest`,
+    // erasing them from this table. Unlike steal_elements + re-insert, this
+    // moves each element directly from its source node into `dest` without an
+    // intermediate vector, saving one move per element and the vector alloc.
+    // Precondition: dest is a different table (typically the new table during
+    // incremental rehash).
+    size_t migrate_elements_to(fixed_hashmap &dest, int64_t num_to_migrate) {
+        size_t migrated = 0;
+        size_t start_bucket = stolen_bucket_;
+        while (num_to_migrate > 0 && stolen_bucket_ >= 0) {
+            if (start_bucket - stolen_bucket_ > k_max_steal_iterations) {
+                break;
+            }
+
+            auto &bucket = table_[stolen_bucket_];
+            while (num_to_migrate > 0 && !bucket.empty()) {
+                auto it = bucket.begin();
+                dest.insert(std::move(*it));
+                bucket.erase(it);
+                num_to_migrate--;
+                size_--;
+                migrated++;
+            }
+
+            if (stolen_bucket_ == 0) {
+                if (bucket.empty()) {
+                    assert(size_ == 0);
+                }
+                break;
+            }
+
+            if (bucket.empty() && stolen_bucket_ > 0) {
+                stolen_bucket_--;
+            }
+        }
+        return migrated;
+    }
+
     // Search for a key and return an iterator to the element
     iterator find(const Key &key) {
         size_t index = hash(key);

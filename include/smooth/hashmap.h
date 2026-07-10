@@ -469,15 +469,14 @@ private:
             return;
         }
 
-        auto elements = old_.steal_elements(k_num_items_to_steal);
-        if (elements.empty() && old_.empty()) {
+        // Move elements directly from old_ into current_ without an
+        // intermediate vector: each element is moved once (source node ->
+        // dest node) instead of twice (source node -> vector -> dest node),
+        // and we avoid the per-call vector allocation.
+        old_.migrate_elements_to(current_, k_num_items_to_steal);
+        if (old_.empty()) {
             rehashing_ = false;
             on_rehashing_finished();
-            return;
-        }
-
-        for (auto& element : elements) {
-           current_.insert(std::move(element));
         }
     }
 
